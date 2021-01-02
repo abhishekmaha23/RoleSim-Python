@@ -19,6 +19,6 @@ The output of the code is a completely interconnected graph consisting of only t
 
 -A GPU implementation of the algorithm might help speed up computations.
 
--Dynamic programming and memoization are also aternatives expected to have significant benefits.
+-Dynamic programming and memoization are also alternatives expected to have significant benefits.
 
 -A Numpy based processing approach was attempted, but the results were comparatively worse than through the current published implementation in NetworkX.
