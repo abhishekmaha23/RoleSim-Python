@@ -10,6 +10,7 @@ __status__ = "Prototype"
 import networkx as nx
 import numpy as np
 import time
+import RoleSim_v1
 
 # The code was originally meant to analyze a graph of movies from the IMDb dataset, and thus there might be a
 # few variables defined for this purpose. However, the code should work independent of the dataset.
@@ -19,7 +20,7 @@ In this code, an equi_width histogram will be created to make bins that define r
 falling under multiple roles, the most common roles will be determined to be the node's role.
 '''
 
-obtained_graph_from_file = nx.read_gpickle("similarity_graph.gpickle")
+obtained_graph_from_file = RoleSim_v1.full_operation()
 
 # print(obtained_graph_from_file.number_of_nodes())
 # print(obtained_graph_from_file.number_of_edges())
