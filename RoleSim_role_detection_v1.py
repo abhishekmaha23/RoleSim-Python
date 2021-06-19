@@ -10,42 +10,42 @@ __status__ = "Prototype"
 import networkx as nx
 import numpy as np
 import time
+import RoleSim_v1
 
-# The code was originally meant to analyze a graph of movies from the IMDb dataset, and thus there might be a 
+# The code was originally meant to analyze a graph of movies from the IMDb dataset, and thus there might be a
 # few variables defined for this purpose. However, the code should work independent of the dataset.
 
 '''
-In this code, an equi_width histogram will be created to make bins that define roles that nodes fall under. In the case of nodes 
-falling under multiple roles, the most common roles will be determined to be the node's role.  
+In this code, an equi_width histogram will be created to make bins that define roles that nodes fall under. In the case of nodes
+falling under multiple roles, the most common roles will be determined to be the node's role.
 '''
 
-obtained_graph_from_file = nx.read_gpickle("similarity_graph.gpickle")
+obtained_graph_from_file = RoleSim_v1.full_operation()
 
-print(obtained_graph_from_file.number_of_nodes())
-print(obtained_graph_from_file.number_of_edges())
-print(list(obtained_graph_from_file.nodes()))
-
-# Number of Roles used for equi-width histogram.
-number_of_bins = 60
+# print(obtained_graph_from_file.number_of_nodes())
+# print(obtained_graph_from_file.number_of_edges())
+# print(list(obtained_graph_from_file.nodes()))
 
 # Histogram creation.
 
-init = 1.0/number_of_bins
-list_of_bins = [0,init]
-i = init
-while i < 1.0:
-    i += init
-    list_of_bins.append(i)
-    
-# print(list_of_bins)
+def histrogram_creator(number_of_bins = 60):
+    init = 1.0/number_of_bins
+    list_of_bins = [0,init]
+    i = init
+    while i < 1.0:
+        i += init
+        list_of_bins.append(i)
 
-for index, i in enumerate(sorted(list_of_bins[-2:], reverse=True)):
-    if np.absolute(1.0 - i) < init:
-        actual_index = - 1 
-        del list_of_bins[actual_index]
-    
-list_of_bins.append(1.0)
-print("Final list of bins", list_of_bins)
+    # print(list_of_bins)
+
+    for index, i in enumerate(sorted(list_of_bins[-2:], reverse=True)):
+        if np.absolute(1.0 - i) < init:
+            actual_index = - 1
+            del list_of_bins[actual_index]
+
+    list_of_bins.append(1.0)
+    print("Final list of bins", list_of_bins)
+    return list_of_bins
 
 
 # Testing code
@@ -55,26 +55,29 @@ print("Final list of bins", list_of_bins)
 
 # print(inds)
 
-edge_list = list(obtained_graph_from_file.edges(data=True))
-node_list = list(obtained_graph_from_file.nodes())
-edge_weight_dict = {}
+def bin_creator(obtained_graph_from_file, list_of_bins):
+    edge_list = list(obtained_graph_from_file.edges(data=True))
+    node_list = list(obtained_graph_from_file.nodes())
+    edge_weight_dict = {}
 
-for node in list(obtained_graph_from_file.nodes()):
-    edge_weight_dict[node] = []
+    for node in list(obtained_graph_from_file.nodes()):
+        edge_weight_dict[node] = []
 
-edge_weights = []
+    edge_weights = []
 
-for edge in edge_list:
-    edge_weight_dict[edge[0]].append(edge[2]['weight'])
-    edge_weight_dict[edge[1]].append(edge[2]['weight'])
+    for edge in edge_list:
+        edge_weight_dict[edge[0]].append(edge[2]['weight'])
+        edge_weight_dict[edge[1]].append(edge[2]['weight'])
 
-print(edge_weight_dict[node_list[0]])
-print(len(edge_weight_dict[node_list[0]]))
+    print(edge_weight_dict[node_list[0]])
+    print(len(edge_weight_dict[node_list[0]]))
 
-node_bin_dict = {}
-for node, value in edge_weight_dict.items():
-    node_bin_dict[node] = np.digitize(edge_weight_dict[node], list_of_bins) 
-    
+    node_bin_dict = {}
+    for node, value in edge_weight_dict.items():
+        node_bin_dict[node] = np.digitize(edge_weight_dict[node], list_of_bins)
+
+    return node_bin_dict
+
 # Test code
 
 # print(node_bin_dict[node_list[6]])
@@ -85,27 +88,34 @@ for node, value in edge_weight_dict.items():
 # y = u[c == c.max()]
 # print(y)
 
-node_role_dict = {}
-role_count = {}
-for i in range(len(list_of_bins)):
-    role_count[i] = 0
+def role_creator(list_of_bins, node_bin_dict):
+    node_role_dict = {}
+    role_count = {}
+    for i in range(len(list_of_bins)):
+        role_count[i] = 0
 
-for node, bins in node_bin_dict.items():
-    u, c = np.unique(bins, return_counts=True)
-    y = u[c == c.max()]
-    role_count[y[0]] += 1
-    node_role_dict[node] = y[0]
-#     break
-    
-# Count of items per role
-print(role_count)
-# Role per node
-print(node_role_dict)
+    for node, bins in node_bin_dict.items():
+        u, c = np.unique(bins, return_counts=True)
+        y = u[c == c.max()]
+        role_count[y[0]] += 1
+        node_role_dict[node] = y[0]
+    #     break
+
+    # Count of items per role
+    print(role_count)
+    # Role per node
+    print(node_role_dict)
+
+    return node_role_dict, role_count
+
+def streamline(obtained_graph_from_file):
+    list_of_bins = histrogram_creator()
+    return role_creator(list_of_bins, bin_creator(obtained_graph_from_file, list_of_bins))
 
 np.save("roles_obtained_from_RoleSim.npy",node_role_dict)
 
-for i, v in role_count.items():
-    print(i, v)
+# for i, v in role_count.items():
+#   print(i, v)
 
 index_to_movie_dict = np.load('movie_nodes_index_id_dict.npy', allow_pickle=True)
 index_to_movie_dict = dict(np.ndenumerate(index_to_movie_dict))
