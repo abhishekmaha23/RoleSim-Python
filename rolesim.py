@@ -1,17 +1,5 @@
-"""RoleSim_v1.py: Code for performing role detection in a community graph. Works with undirected graphs."""
-
-__author__ = "Abhishek Mahadevan Raju"
-__license__ = "GPL"
-__version__ = "1.1.0"
-__maintainer__ = "Abhishek Mahadevan Raju"
-__status__ = "Prototype"
-
-# Imports
-
 import networkx as nx
 import numpy as np
-from numpy import genfromtxt
-import pandas as pd
 
 from itertools import combinations
 from networkx.algorithms.matching import max_weight_matching
@@ -19,21 +7,20 @@ import itertools
 
 import time
 
-def bootstrap():
-    # The code was originally meant to analyze a graph of movies from the IMDb dataset, and thus there might be a
-    # few variables defined for this purpose. However, the code should work independent of the dataset.
+# The following hyperparameters are being set to prune a certain threshold of nodes from the given graph.
+# This step might take up to 10 minutes depending upon the size of the graph.
+theta = 0
+alpha = 1
+beta = 0
+theta_bar = (theta - beta)/(1 - beta)
 
-    '''
-    Create 2 dictionaries that convert your graph unique IDs into
-    a series of numbers starting at 0.
-    '''
-    # node_to_index_dict
-    # index_to_node_dict
+delta = 0.01
 
 
+def bootstrap(graph : nx.Graph):
     """Processing of RoleSim begins below"""
 
-    actual_data_graph = nx.Graph()
+    actual_data_graph = graph
 
     # actual_data_graph = Graph created using integers for indices, and corresponding edges.
 
@@ -71,7 +58,7 @@ def bootstrap():
 The following section creates a sorted list of neighbours for the sorted list of nodes
 '''
 
-def neigh(sorted_nodes, actual_data_graph):
+def get_sorted_neighbours(sorted_nodes, actual_data_graph):
     neighbor_degree_sorted_list = {}
 
     for node in sorted_nodes:
@@ -113,15 +100,6 @@ def get_maximal_matching_weight_from_existing_graph_edges(graph, node_u, node_v,
 '''
 Iceberg pruning and initialization step for the actual RoleSim algorithm
 '''
-# The following hyperparameters are being set to prune a certain threshold of nodes from the given graph.
-# This step might take up to 10 minutes depending upon the size of the graph.
-
-theta = 0.9999
-alpha = 0.4
-beta = 0.2
-theta_bar = (theta - beta)/(1 - beta)
-
-
 
 def insert_node_pair_and_similarity(graph, node_u, node_v, beta, maximal_matching_weight, similarity_temp_graph_iceberg):
     similarity_initial_value = (1 - beta) * (maximal_matching_weight/graph.degree(node_u))  + beta
@@ -155,8 +133,14 @@ def cleaning(comb, graph, neighbor_degree_sorted_list):
         node_v = i[1]
 
         # Rule 1
+        print("===")
+        print("Testing ", node_u, node_v)
+        print(theta_bar)
+        print(graph.degree(node_u))
+        print(graph.degree(node_v))
+        print("===")
         if (theta_bar*graph.degree(node_u) > graph.degree(node_v)) or (graph.degree(node_v) > graph.degree(node_u)):
-        #   print("Pruned by rule 1", node_u, node_v)
+            print("Pruned by rule 1", node_u, node_v)
             pruned_by_one += 1
             continue
         else :
@@ -166,7 +150,7 @@ def cleaning(comb, graph, neighbor_degree_sorted_list):
             neighbor_1_degree_v = neighbor_degree_sorted_list[node_v][1][0]
             m11 = (1 - beta)* (min(neighbor_1_degree_u, neighbor_1_degree_v) / max(neighbor_1_degree_u, neighbor_1_degree_v)) + beta
             if neighbor_1_degree_v <= neighbor_1_degree_u and ((graph.degree(node_v) - 1 + m11) < (theta_bar*graph.degree(node_u))):
-    #             print("Pruned by rule 3", node_u, node_v)
+                print("Pruned by rule 3", node_u, node_v)
                 pruned_by_three += 1
                 continue
 
@@ -178,7 +162,7 @@ def cleaning(comb, graph, neighbor_degree_sorted_list):
             insert_node_pair_and_similarity(graph, node_u, node_v, beta, maximal_matching_weight, similarity_temp_graph_iceberg)
         else:
             pruned_by_two += 1
-    #         print("Pruned by rule 2", node_u, node_v, " with ", maximal_matching_weight)
+            print("Pruned by rule 2", node_u, node_v, " with ", maximal_matching_weight)
 
     print(inserted_into_graph, ' nodes were inserted in the graph.')
     print(pruned_by_one, ' nodes were pruned by rule 1.')
@@ -282,8 +266,6 @@ def conv(list_of_nodes_selected, final_similarity_iceberg_graph):
     iterative_rolesim_graph_initial = nx.Graph(final_similarity_iceberg_graph)
     return list_of_nodes_selected_sorted, iterative_rolesim_graph_initial
 
-delta = 0.01
-
 '''
 Auxiliary functions for the use of the main RoleSim algorithm.
 '''
@@ -357,7 +339,7 @@ def get_weight_of_new_iteration_graph_from_formula(previous_iteration, node_u, n
 # Actual Iterative RoleSim algorithm
 # ----------------------------------------------
 
-def iterate(iterative_rolesim_graph_initial):
+def iterate(iterative_rolesim_graph_initial, neighbor_degree_sorted_list, list_of_nodes_selected_sorted):
     '''
     The code uses the edge weights of an undirected networkX graph to store the similarity values between nodes.
     Thus, every node is connected to every other node in this graph, and if there are n nodes, then there are
@@ -387,7 +369,7 @@ def iterate(iterative_rolesim_graph_initial):
         for edge in list(current_iteration.edges):
             node_u = edge[0]
             node_v = edge[1]
-            current_iteration[node_u][node_v]['weight'] = (1-beta) *get_weight_of_new_iteration_graph_from_formula(previous_iteration, node_u, node_v) + beta
+            current_iteration[node_u][node_v]['weight'] = (1-beta) *get_weight_of_new_iteration_graph_from_formula(previous_iteration, node_u, node_v, neighbor_degree_sorted_list, list_of_nodes_selected_sorted) + beta
 
         elapsed_time = time.time() - start_time
         print('Current_iteration')
@@ -404,18 +386,19 @@ def iterate(iterative_rolesim_graph_initial):
 
 # At each point, the first 4 edges of the graph are printed out to ensure that convergence is actually happening.
 
-def full_operation():
-    sorted_nodes, actual_data_graph = bootstrap()
-    neighbor_degree_sorted_list, sorted_node_list = neigh(sorted_nodes, actual_data_graph)
+def full_operation(graph):
+    # Initialization
+    sorted_nodes, actual_data_graph = bootstrap(graph)
+    neighbor_degree_sorted_list, sorted_node_list = get_sorted_neighbours(sorted_nodes, actual_data_graph)
+    
     comb, graph = permutations(sorted_node_list, actual_data_graph)
+    
+    # Iceberg
     similarity_temp_graph_iceberg = cleaning(comb, graph, neighbor_degree_sorted_list)
     final_similarity_iceberg_graph, list_of_nodes_selected = auxiliary(actual_data_graph, similarity_temp_graph_iceberg)
+    
     list_of_nodes_selected_sorted, iterative_rolesim_graph_initial = conv(list_of_nodes_selected, final_similarity_iceberg_graph)
-    current_iteration = iterate(iterative_rolesim_graph_initial)
+    current_iteration = iterate(iterative_rolesim_graph_initial, neighbor_degree_sorted_list, list_of_nodes_selected_sorted)
+    
+    # Returned converged graph
     return current_iteration
-
-
-np.save("movie_nodes_index_id_dict.npy", movie_nodes_index_id_dict)
-np.save("movie_nodes_id_index_dict.npy", movie_nodes_id_index_dict)
-
-# Saving the dicts for accessing the IDs during the role generation step and visualization

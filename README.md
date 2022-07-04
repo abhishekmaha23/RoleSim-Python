@@ -3,7 +3,23 @@ A RoleSim implementation creating using networkX for processing
 
 The theory and implementation details have been obtianed from the paper - https://arxiv.org/abs/1102.3937 - Axiomatic Ranking of Network Role Similarity by Jin et al. (2011).
 
-The RoleSim algorithm is a convergin algorithm that attempts to approximately solve the NP-complete problem of role discovery problem within a reasonable number of iterations, within suitable computational complexity. In spite of operating this way, there is still a massive number of computations involved in creating an n * n matrix, and the process often times out.
+## Usage
+
+Install dependencies listed in `requirements.txt`
+
+Run example file with -
+
+`python main.py --example`
+
+Run actual graph file for undirected graphs without edge-weights that have been saved as `pickle (pkl)` files. For example,
+
+`python main.py --file example.pkl` 
+
+TODO: Integrate Role Detection and binning into main algorithm - Logging cleanup - Separate hyperparameters into main
+
+## Info
+
+The RoleSim algorithm is a converging algorithm that attempts to approximately solve the NP-complete problem of role discovery problem within a reasonable number of iterations, within suitable computational complexity. In spite of operating this way, there is still a massive number of computations involved in creating an n * n matrix, and the process often times out.
 
 The Iceberg RoleSim algorithm is a layer on top of the RoleSim algorithm that prunes out unimportant and unrelated nodepairs to identify nodes that seem to have the most interesting connections, thus reducing the order of magnitude of the processing to a manageable extent.
 
